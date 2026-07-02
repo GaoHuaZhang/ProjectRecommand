@@ -4,6 +4,7 @@
   python main.py                      # 全量运行，走 config/.env
   python main.py --dry-run            # 只读表校验，不调模型（省 token）
   python main.py --limit 1            # 只处理前 1 位同学（联调用）
+  python main.py --names 张三,李四     # 只推荐指定候选人
   python main.py --top-n 5            # 覆盖每人推荐数量
   python main.py --students a.xlsx --topics b.xlsx
 """
@@ -30,6 +31,10 @@ def parse_args():
     p.add_argument("--students", type=Path, help="同学评价 xlsx 路径（覆盖 .env）")
     p.add_argument("--topics", type=Path, help="课题清单 xlsx 路径（覆盖 .env）")
     p.add_argument("--top-n", type=int, help="每位同学推荐课题数（覆盖 .env）")
+    p.add_argument(
+        "--names",
+        help="只推荐指定候选人（姓名，多个用英文逗号分隔，如 张三,李四）",
+    )
     p.add_argument("--limit", type=int, help="只处理前 N 位同学（联调用）")
     p.add_argument("--dry-run", action="store_true", help="只读表校验，不调用模型")
     return p.parse_args()
@@ -71,6 +76,25 @@ def main() -> int:
         return 1
 
     console.print(f"[green]✓[/green] 读取同学 {len(students)} 人，课题 {len(topics)} 个。")
+
+    if args.names:
+        wanted = [n.strip() for n in args.names.split(",") if n.strip()]
+        by_name = {s.name.strip(): s for s in students}
+        selected = [by_name[n] for n in wanted if n in by_name]
+        missing = [n for n in wanted if n not in by_name]
+        if missing:
+            console.print(
+                f"[yellow]⚠ 未在同学表中找到：{', '.join(missing)}[/yellow]"
+            )
+        if not selected:
+            console.print(
+                f"[red]--names 未匹配到任何候选人。可选姓名：{', '.join(by_name)}[/red]"
+            )
+            return 1
+        students = selected
+        console.print(
+            f"[yellow]--names 生效，仅推荐 {len(students)} 人：{', '.join(s.name for s in students)}。[/yellow]"
+        )
 
     if args.limit:
         students = students[: args.limit]
