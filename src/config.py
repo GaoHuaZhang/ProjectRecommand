@@ -28,6 +28,8 @@ class Config:
     temperature: float
     timeout: int
     max_retries: int
+    verify_ssl: bool = True   # False 等效 curl -k（内网自签证书用）
+    ca_bundle: str = ""       # 自定义 CA 证书路径（比关闭校验更安全）
 
 
 def _require(name: str) -> str:
@@ -67,6 +69,11 @@ def load_config() -> Config:
     except ValueError as e:
         raise ConfigError(f"数值型配置解析失败：{e}") from e
 
+    verify_ssl = os.getenv("LLM_VERIFY_SSL", "true").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+    ca_bundle = os.getenv("LLM_CA_BUNDLE", "").strip()
+
     return Config(
         base_url=base_url,
         api_key=api_key,
@@ -78,4 +85,6 @@ def load_config() -> Config:
         temperature=temperature,
         timeout=timeout,
         max_retries=max_retries,
+        verify_ssl=verify_ssl,
+        ca_bundle=ca_bundle,
     )

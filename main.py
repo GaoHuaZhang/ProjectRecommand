@@ -109,21 +109,21 @@ def main() -> int:
 
 
 def _print_dry_run(students, topics):
-    t = Table(title="同学（前 5 条预览）")
-    t.add_column("姓名"); t.add_column("投递岗位"); t.add_column("专业面试意见")
-    for s in students[:5]:
-        review = s.professional_review or s.overall_review
-        ev = review[:40] + ("…" if len(review) > 40 else "")
-        t.add_row(s.name, s.position or "-", ev)
-    console.print(t)
+    """预览实际会喂给模型的结构化文本，字段完全来自 xlsx，不做裁剪硬编码。"""
+    from rich.panel import Panel
 
-    t2 = Table(title="课题（前 5 条预览）")
-    t2.add_column("编号"); t2.add_column("课题"); t2.add_column("目标/描述")
-    for tp in topics[:5]:
-        summary = tp.objective or tp.background or tp.content or tp.description
-        desc = summary[:40] + ("…" if len(summary) > 40 else "")
-        t2.add_row(tp.topic_id, tp.name, desc)
-    console.print(t2)
+    console.print("\n[bold]同学信息（前 3 条，即发送给模型的内容）[/bold]")
+    for s in students[:3]:
+        console.print(Panel(s.to_prompt_block(), title=s.name, expand=False))
+
+    console.print("\n[bold]课题清单（前 3 条，即发送给模型的内容）[/bold]")
+    for tp in topics[:3]:
+        console.print(Panel(tp.to_prompt_block(), title=f"[{tp.topic_id}] {tp.name}", expand=False))
+
+    if len(students) > 3 or len(topics) > 3:
+        console.print(
+            f"[dim]（仅预览前 3 条；实际共 {len(students)} 位同学、{len(topics)} 个课题）[/dim]"
+        )
 
 
 def _print_results(results):

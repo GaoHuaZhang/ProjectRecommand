@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 
+import httpx
 from openai import OpenAI
 
 from .config import Config
@@ -11,11 +12,17 @@ from .config import Config
 class LLMClient:
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        # 处理内网自签证书：verify 可为 bool（False 等效 curl -k）或 CA 证书路径
+        verify: bool | str = cfg.verify_ssl
+        if cfg.ca_bundle:
+            verify = cfg.ca_bundle  # 指定 CA 比整体关闭校验更安全
+        http_client = httpx.Client(verify=verify, timeout=cfg.timeout)
         self.client = OpenAI(
             base_url=cfg.base_url,
             api_key=cfg.api_key,
             timeout=cfg.timeout,
             max_retries=0,  # 重试逻辑自己控制，便于降级
+            http_client=http_client,
         )
         # 记录网关是否支持 response_format=json_object；探测失败后置 False 避免反复试
         self._json_mode_ok = True
